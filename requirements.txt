@@ -4,3 +4,4 @@ scikit_learn==1.6.1
 scipy==1.15.0
 statsmodels==0.14.4
 yfinance==0.2.50
+plotly>=5.13.0
