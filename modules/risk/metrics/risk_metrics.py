@@ -19,7 +19,7 @@ def calculate_var(payoffs, confidence_level=0.95):
     var = sorted_payoffs[index]
     return var
 
-def calculate_risk_metrics(returns, weights, risk_free_rate=0.0):
+def calculate_risk_metrics(returns, weights, risk_free_rate=0.0, expected_return=None):
     """
     Calculate various risk metrics for the portfolio (Annual Return, 
     Volatility, Sharpe, Sortino, Max Drawdown, Beta, etc.).
@@ -27,6 +27,7 @@ def calculate_risk_metrics(returns, weights, risk_free_rate=0.0):
     :param returns: DataFrame of asset returns
     :param weights: dict or 1D array of portfolio weights
     :param risk_free_rate: float, annual risk-free rate
+    :param expected_return: float, expected annual return (optional)
     :return: dict containing risk metrics
     """
     import yfinance as yf
@@ -43,7 +44,7 @@ def calculate_risk_metrics(returns, weights, risk_free_rate=0.0):
     portfolio_returns = returns.dot(weights)  # Use Pandas dot for proper alignment
     portfolio_std = portfolio_returns.std()
     ann_factor = TRADING_DAYS_PER_YEAR
-    ann_return = (1 + portfolio_returns.mean()) ** ann_factor - 1
+    realized_ann_return = (1 + portfolio_returns.mean()) ** ann_factor - 1
     ann_vol = portfolio_std * np.sqrt(ann_factor)
     
     # Daily Sharpe
@@ -56,7 +57,7 @@ def calculate_risk_metrics(returns, weights, risk_free_rate=0.0):
     downside_returns = portfolio_returns[portfolio_returns < 0]
     downside_std = np.sqrt(np.mean(downside_returns**2)) * np.sqrt(ann_factor) if len(downside_returns) > 0 else np.nan
     
-    sortino_ratio = (ann_return - risk_free_rate) / downside_std if downside_std and downside_std > 0 else np.nan
+    sortino_ratio = (realized_ann_return - risk_free_rate) / downside_std if downside_std and downside_std > 0 else np.nan
 
     # Maximum Drawdown
     cum_returns = (1 + portfolio_returns).cumprod()
@@ -77,7 +78,7 @@ def calculate_risk_metrics(returns, weights, risk_free_rate=0.0):
         beta = np.nan
 
     metrics_data = {
-        'Annual Return': {'Value': ann_return, 'Format': 'percentage'},
+        'Annual Return': {'Value': realized_ann_return, 'Format': 'percentage'},
         'Annual Volatility': {'Value': ann_vol, 'Format': 'percentage'}, 
         'Sharpe Ratio': {'Value': sharpe_ratio, 'Format': 'decimal'},
         'Sortino Ratio': {'Value': sortino_ratio, 'Format': 'decimal'},
@@ -87,7 +88,21 @@ def calculate_risk_metrics(returns, weights, risk_free_rate=0.0):
         'CVaR (95%)': {'Value': calculate_cvar(portfolio_returns, 0.95), 'Format': 'percentage'}
     }
     
-    metrics_df = pd.DataFrame(metrics_data)
+    # Expected return metrics (if provided)
+    if expected_return is not None:
+        exp_sharpe = (expected_return - risk_free_rate) / ann_vol if ann_vol > 0 else np.nan
+        exp_sortino = (expected_return - risk_free_rate) / downside_std if downside_std and downside_std > 0 else np.nan
+        metrics_data.update({
+            'Expected Return': {'Value': expected_return, 'Format': 'percentage'},
+            'Expected Volatility': {'Value': ann_vol, 'Format': 'percentage'}, # Using same volatility
+            'Expected Sharpe': {'Value': exp_sharpe, 'Format': 'decimal'},
+            'Expected Sortino': {'Value': exp_sortino, 'Format': 'decimal'},
+            'Expected Max DD': {'Value': max_drawdown, 'Format': 'percentage'},  # Using same drawdown
+            'Expected Beta': {'Value': beta, 'Format': 'decimal'},  # Using same beta
+            'Expected VaR (95%)': {'Value': calculate_var(portfolio_returns, 0.95), 'Format': 'percentage'},
+            'Expected CVaR (95%)': {'Value': calculate_cvar(portfolio_returns, 0.95), 'Format': 'percentage'}
+        })
+
     metrics_df = pd.DataFrame(metrics_data).T.reset_index().rename(columns={'index': 'Metric'})
     metrics_df['Formatted Value'] = metrics_df.apply(
         lambda x: f"{x['Value']:.2%}" if x['Format'] == 'percentage' and pd.notnull(x['Value']) 

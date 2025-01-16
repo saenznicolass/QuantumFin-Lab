@@ -5,7 +5,13 @@ import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
 
-def monte_carlo_portfolio_simulation(returns, weights, n_simulations=10000, time_horizon=252):
+
+def monte_carlo_portfolio_simulation(
+    returns, 
+    weights, 
+    n_simulations=10000, 
+    time_horizon=252
+):
     """
     Simulate portfolio returns using a basic lognormal assumption.
     
@@ -13,7 +19,8 @@ def monte_carlo_portfolio_simulation(returns, weights, n_simulations=10000, time
     :param weights: dict or array of portfolio weights
     :param n_simulations: number of Monte Carlo runs
     :param time_horizon: number of days to project
-    :return: array of simulated final returns
+    :param return_paths: bool, if True return the entire paths
+    :return: array of simulated final returns or daily paths
     """
     if isinstance(weights, dict):
         w_array = []
@@ -23,23 +30,22 @@ def monte_carlo_portfolio_simulation(returns, weights, n_simulations=10000, time
     else:
         weights = np.array(weights)
 
-    mean_returns = returns.mean()
-    cov_matrix = returns.cov()
-    # annualize
-    mean_returns_annual = mean_returns * 252
-    cov_matrix_annual = cov_matrix * 252
+    # Convert to log returns
+    log_returns = np.log1p(returns)
+    # Calculate daily mean and covariance
+    daily_mean = log_returns.mean()
+    daily_cov = log_returns.cov()
 
-    # Generate multivariate normal random draws
-    simulated = np.random.multivariate_normal(
-        mean_returns_annual, 
-        cov_matrix_annual, 
-        n_simulations
-    )
-    # Weighted sum => distribution of total returns over full year
-    portfolio_sim_returns = simulated.dot(weights)
-    # Convert from log returns assumption: approximate final wealth minus 1
-    # or just interpret directly as final returns
-    return portfolio_sim_returns
+    # Generate random draws for each day in the time horizon
+    # Assuming these are log returns
+    simulated = np.random.multivariate_normal(daily_mean, daily_cov, (n_simulations, time_horizon))
+
+    # Aggregate daily log returns for each simulation, then convert to final return
+    portfolio_daily = simulated.dot(weights)
+    # Sum log returns and exponentiate
+    final_returns = np.exp(portfolio_daily.cumsum(axis=1)[:, -1]) - 1
+    daily_paths = np.exp(portfolio_daily.cumsum(axis=1)) - 1
+    return final_returns, daily_paths
 
 def run_stress_test_scenarios(portfolio_returns, scenarios_dict, confidence_level=0.95):
     """

@@ -25,8 +25,6 @@ def get_data(tickers, start=None, end=None, interval="1d"):
             auto_adjust=True
         )["Close"]
         data = data.dropna()
-        print(f"Fetched data for {tickers}")
-        print(data.head())
         return data
     except Exception as e:
         st.error(f"Error fetching data for {tickers}: {e}")

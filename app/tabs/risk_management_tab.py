@@ -78,9 +78,9 @@ def render_risk_management_tab():
 
     col_a, col_b = st.columns(2)
     with col_a:
-        st.metric(f"VaR ({confidence_level:.0%})", f"{-var_value:.2%}")
+        st.metric(f"VaR ({confidence_level:.0%})", f"{var_value:.2%}")
     with col_b:
-        st.metric(f"CVaR ({confidence_level:.0%})", f"{-cvar_value:.2%}" if not np.isnan(cvar_value) else "N/A")
+        st.metric(f"CVaR ({confidence_level:.0%})", f"{cvar_value:.2%}" if not np.isnan(cvar_value) else "N/A")
 
     # Distribution histogram with VaR lines
     fig_dist = go.Figure()
@@ -107,7 +107,10 @@ def render_risk_management_tab():
 
     st.subheader("Monte Carlo Simulation")
     n_sim = st.number_input("Number of Simulations", 1000, 1000000, 10000, 1000)
-    sim_returns = monte_carlo_portfolio_simulation(returns, weights, n_simulations=n_sim)
+    
+    # Simulate returns and paths
+    sim_returns, mc_paths = monte_carlo_portfolio_simulation(returns, weights, n_simulations=n_sim)
+
     sim_mean = sim_returns.mean()
     sim_std = sim_returns.std()
     sim_var = np.percentile(sim_returns, (1 - confidence_level) * 100)
@@ -116,19 +119,66 @@ def render_risk_management_tab():
     col_m1, col_m2, col_m3 = st.columns(3)
     col_m1.metric("Simulated Mean Return", f"{sim_mean:.2%}")
     col_m2.metric("Simulated Volatility", f"{sim_std:.2%}")
-    col_m3.metric(f"Simulated VaR ({confidence_level:.0%})", f"{-sim_var:.2%}")
+    col_m3.metric(f"Simulated VaR ({confidence_level:.0%})", f"{sim_var:.2%}")
 
     col_m4, col_m5 = st.columns(2)
-    col_m4.metric(f"Simulated CVaR ({confidence_level:.0%})", f"{-sim_cvar:.2%}" if not np.isnan(sim_cvar) else "N/A")
+    col_m4.metric(f"Simulated CVaR ({confidence_level:.0%})", f"{sim_cvar:.2%}" if not np.isnan(sim_cvar) else "N/A")
 
     fig_sim = go.Figure()
     fig_sim.add_trace(go.Histogram(x=sim_returns, nbinsx=50, name="Simulated Returns"))
+    fig_sim.add_vline(
+        x=sim_var,
+        line_dash="dash",
+        line_color="red",
+        annotation_text=f"VaR ({confidence_level:.0%})"
+    )
+    if not np.isnan(cvar_value):
+        fig_sim.add_vline(
+            x=sim_cvar,
+            line_dash="dash",
+            line_color="orange",
+            annotation_text=f"CVaR ({confidence_level:.0%})"
+        )
     fig_sim.update_layout(
         title=f"Distribution of {n_sim:,} Simulated Returns",
         xaxis_title="Return",
         yaxis_title="Frequency"
     )
     st.plotly_chart(fig_sim, use_container_width=True)
+
+    st.subheader("Monte Carlo Paths with Daily VaR/CVaR")
+    days = mc_paths.shape[1]
+    
+    # Compute daily VaR & CVaR
+    daily_var = np.percentile(mc_paths, (1 - confidence_level)*100, axis=0)
+    daily_cvar = []
+    for i in range(days):
+        below_var = mc_paths[:, i] <= daily_var[i]
+        daily_cvar.append(mc_paths[below_var, i].mean() if np.any(below_var) else np.nan)
+
+    # Plot only a few paths for clarity
+    fig_paths = go.Figure()
+    for path_idx in np.random.choice(range(mc_paths.shape[0]), size=min(20, mc_paths.shape[0]), replace=False):
+        fig_paths.add_trace(go.Scatter(
+            x=list(range(days)), y=mc_paths[path_idx],
+            mode='lines', line=dict(width=1),
+            name=f"Sim {path_idx}", showlegend=False
+        ))
+
+    fig_paths.add_trace(go.Scatter(
+        x=list(range(days)), y=daily_var,
+        mode='lines', name='Daily VaR', line=dict(color='red', width=2)
+    ))
+    fig_paths.add_trace(go.Scatter(
+        x=list(range(days)), y=daily_cvar,
+        mode='lines', name='Daily CVaR', line=dict(color='orange', width=2)
+    ))
+    fig_paths.update_layout(
+        title="Monte Carlo Paths with Daily VaR & CVaR",
+        xaxis_title="Day",
+        yaxis_title="Cumulative Return"
+    )
+    st.plotly_chart(fig_paths, use_container_width=True)
 
     st.subheader("Tail Risk / Extreme Value Analysis")
     tail_risk = extreme_value_analysis(returns, weights, threshold_percentile=5)

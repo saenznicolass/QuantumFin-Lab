@@ -11,14 +11,14 @@ OPTIONS_TICKERS = [
     'INTC', 'AMD', 'CRM', 'ADBE', 'CSCO', 'QCOM', 'UBER', 'ZM', 'SQ', 'SHOP',
     'BARC.L', 'BBVA.MC', 'BNP.PA', 'BP.L', 'CAD=X', 'CBK.DE', 'CHF=X', 'CNY=X',
     'DBK.DE', 'EEM', 'ENI.MI', 'EQNR.OL', 'EURUSD=X', 'EWZ', 'FSLR', 'FXI',
-    'GBPUSD=X', 'GLE.PA', 'HSBA.L', 'JPY=X', 'MXN=X', 'NEE',
-    'TCS', 'CAMS', 'ITC', 'INFY'
+    'GBPUSD=X', 'GLE.PA', 'HSBA.L', 'JPY=X', 'MXN=X', 'NEE', 'NOK', 'NOK=X'
 ]
 # Default tickers for the application
 DEFAULT_TICKERS = [
     'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'BARC.L', 'BBVA.MC', 'NFLX', 
     'BNP.PA', 'BP.L', 'CAD=X', 'CBK.DE', 'CHF=X', 'CNY=X',
-    'DBK.DE', 'EEM', 'ENI.MI', 'EQNR.OL', 'EURUSD=X', 'GBPUSD=X'
+    'DBK.DE', 'EEM', 'ENI.MI', 'EQNR.OL', 'EURUSD=X', 'GBPUSD=X',
+    'AAPL', 'META', 'NVDA'
 ]
 
 # Days in a trading year (approx)

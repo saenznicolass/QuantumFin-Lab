@@ -1,116 +1,159 @@
 import pandas as pd
 import numpy as np
+import yfinance as yf
+from typing import Dict, Optional
 
-def run_backtest(prices: pd.DataFrame, 
-                weights: dict,
-                rebalance_frequency: str = 'M',
-                transaction_costs: float = 0.001):
+def run_backtest(
+    data: pd.DataFrame,
+    weights: Dict[str, float],
+    rebalance_frequency: str = "M",
+    transaction_costs: float = 0.001,
+    benchmark: Optional[str] = None
+) -> pd.DataFrame:
     """
-    Run a portfolio backtest with periodic rebalancing
+    Run portfolio backtest with rebalancing and transaction costs.
     
-    :param prices: DataFrame of asset prices
-    :param weights: dict of target weights
-    :param rebalance_frequency: pandas frequency string ('M' for monthly)
-    :param transaction_costs: percentage cost per trade (one-way)
+    :param data: DataFrame of asset prices
+    :param weights: Dictionary of weights {asset: weight}
+    :param rebalance_frequency: Rebalancing frequency ('M', 'Q', '6M', 'Y')
+    :param transaction_costs: Transaction costs as decimal
+    :param benchmark: Optional benchmark ticker (e.g. '^GSPC' for S&P 500)
     :return: DataFrame with backtest results
     """
-    # Convert weights to series
-    target_weights = pd.Series(weights)
+    # Convert weights to series if dict
+    if isinstance(weights, dict):
+        weights = pd.Series(weights)
     
     # Calculate returns
-    returns = prices.pct_change().dropna()
+    returns = data.pct_change().dropna()
     
-    # Initialize backtest DataFrame
-    backtest_results = pd.DataFrame(index=returns.index)
-    backtest_results['portfolio_value'] = 1.0
-    current_weights = target_weights.copy()
-    portfolio_value = 1.0
+    # Initialize portfolio
+    portfolio_value = 100  # Start with $100
+    current_weights = weights.copy()
+    portfolio_values = []
+    dates = []
+    portfolio_returns = []
+    rebalance_dates = pd.date_range(start=returns.index[0], end=returns.index[-1], freq=rebalance_frequency)
     
-    # Group by rebalancing frequency
-    for period_start, period_data in returns.groupby(pd.Grouper(freq=rebalance_frequency)):
-        if period_data.empty:
-            continue
-            
-        # Calculate current weights after drift
-        if len(period_data) > 0:
-            period_returns = (1 + period_data).prod() - 1
-            drifted_weights = current_weights * (1 + period_returns)
-            drifted_weights = drifted_weights / drifted_weights.sum()
-            
-            # Calculate rebalancing costs (round-trip)
-            weight_changes = np.abs(drifted_weights - target_weights).sum()
-            costs = weight_changes * transaction_costs  # Round-trip costs
-            
-            # Apply costs at the beginning of the period
-            portfolio_value *= (1 - costs)
-            backtest_results.loc[period_data.index[0], 'costs'] = costs
-        
-        # Calculate returns for the period
-        period_portfolio_returns = period_data.mul(current_weights).sum(axis=1)
-        backtest_results.loc[period_data.index, 'returns'] = period_portfolio_returns
+    # Get benchmark data if specified
+    benchmark_values = None
+    if benchmark:
+        try:
+            benchmark_data = yf.download(benchmark, start=returns.index[0], end=returns.index[-1], auto_adjust=True)
+            benchmark_values = benchmark_data['Close'] / benchmark_data['Close'].iloc[0] * 100
+        except:
+            print(f"Warning: Could not fetch benchmark data for {benchmark}")
+    
+    # Run backtest
+    for date in returns.index:
+        # Calculate daily returns
+        daily_return = (returns.loc[date] * current_weights).sum()
         
         # Update portfolio value
-        for date in period_data.index:
-            portfolio_value *= (1 + period_portfolio_returns[date])
-            backtest_results.loc[date, 'portfolio_value'] = portfolio_value
+        portfolio_value *= (1 + daily_return)
         
-        # Update weights for next period
-        current_weights = target_weights.copy()
-    
-    # Fill missing values
-    backtest_results['costs'] = backtest_results['costs'].fillna(0)
-    backtest_results['returns_after_costs'] = backtest_results['returns']
-    
-    # Adjust returns after costs on rebalancing dates
-    rebalancing_dates = backtest_results[backtest_results['costs'] > 0].index
-    backtest_results.loc[rebalancing_dates, 'returns_after_costs'] -= backtest_results.loc[rebalancing_dates, 'costs']
-    
-    return backtest_results
+        # Store results
+        portfolio_values.append(portfolio_value)
+        dates.append(date)
+        portfolio_returns.append(daily_return)
+        
+        # Rebalance if needed
+        if date in rebalance_dates:
+            # Calculate current weights
+            asset_values = portfolio_value * current_weights
+            current_total = asset_values.sum()
+            current_weights = asset_values / current_total
+            
+            # Calculate rebalancing costs
+            weight_diffs = abs(current_weights - weights)
+            turnover = weight_diffs.sum() / 2
+            cost = turnover * transaction_costs
+            
+            # Apply transaction costs
+            portfolio_value *= (1 - cost)
+            
+            # Reset to target weights
+            current_weights = weights.copy()
 
-def calculate_backtest_metrics(backtest_results: pd.DataFrame,
-                             risk_free_rate: float = 0.02):
+    # Create results DataFrame
+    results = pd.DataFrame({
+        'portfolio_value': portfolio_values,
+        'returns': portfolio_returns
+    }, index=returns.index)
+    
+    # Add benchmark if available
+    if benchmark_values is not None:
+        benchmark_values = benchmark_values.reindex(returns.index, method='ffill')
+        results['benchmark_value'] = benchmark_values
+    
+    return results
+
+def calculate_backtest_metrics(backtest_results: pd.DataFrame) -> pd.DataFrame:
     """
-    Calculate performance metrics from backtest results
+    Calculate performance metrics from backtest results.
+    
+    :param backtest_results: DataFrame with backtest results
+    :return: DataFrame with metrics
     """
-    returns = backtest_results['returns_after_costs']
+    portfolio_returns = backtest_results['returns']
     
-    # Calculate proper annualized return from total return
-    total_return = backtest_results['portfolio_value'].iloc[-1] - 1
-    n_years = len(returns) / 252  # Convert days to years
-    ann_return = (1 + total_return) ** (1 / n_years) - 1  # Geometric mean annual return
+    # Calculate metrics
+    total_return = (backtest_results['portfolio_value'].iloc[-1] / backtest_results['portfolio_value'].iloc[0]) - 1
+    annual_return = (1 + total_return) ** (252 / len(portfolio_returns)) - 1
+    annual_vol = portfolio_returns.std() * np.sqrt(252)
+    sharpe = annual_return / annual_vol if annual_vol > 0 else np.nan
     
-    # Rest of calculations
-    ann_vol = returns.std() * np.sqrt(252)
-    sharpe = (ann_return - risk_free_rate) / ann_vol
-    
-    # Drawdown analysis
-    cum_returns = (1 + returns).cumprod()
-    rolling_max = cum_returns.expanding().max()
+    # Drawdown calculations
+    cum_returns = (1 + portfolio_returns).cumprod()
+    rolling_max = cum_returns.cummax()
     drawdowns = (cum_returns - rolling_max) / rolling_max
     max_drawdown = drawdowns.min()
     
-    # Win rate and other metrics
-    win_rate = (returns > 0).mean()
-    avg_win = returns[returns > 0].mean()
-    avg_loss = returns[returns < 0].mean()
-    profit_factor = abs(returns[returns > 0].sum() / returns[returns < 0].sum())
+    # Calculate benchmark-relative metrics if available
+    benchmark_metrics = {}
+    if 'benchmark_value' in backtest_results.columns:
+        benchmark_returns = backtest_results['benchmark_value'].pct_change().dropna()
+        # Align portfolio and benchmark returns
+        aligned = pd.concat([portfolio_returns, benchmark_returns], axis=1).dropna()
+        portfolio_returns = aligned.iloc[:, 0]
+        benchmark_returns = aligned.iloc[:, 1]
+        
+        # Calculate beta
+        covar = np.cov(portfolio_returns, benchmark_returns)[0,1]
+        var = np.var(benchmark_returns)
+        beta = covar / var if var != 0 else np.nan
+        # Calculate alpha
+        alpha = annual_return - beta * (benchmark_returns.mean() * 252)
+        # Information ratio
+        tracking_error = (portfolio_returns - benchmark_returns).std() * np.sqrt(252)
+        info_ratio = (annual_return - benchmark_returns.mean() * 252) / tracking_error if tracking_error != 0 else np.nan
+        
+        benchmark_metrics.update({
+            'Beta': {'Value': beta, 'Format': 'decimal'},
+            'Alpha': {'Value': alpha, 'Format': 'percentage'},
+            'Information Ratio': {'Value': info_ratio, 'Format': 'decimal'},
+            'Tracking Error': {'Value': tracking_error, 'Format': 'percentage'}
+        })
     
+    # Create metrics dictionary
     metrics = {
-        'Annual Return': {'Value': ann_return, 'Format': 'percentage'},
-        'Annual Volatility': {'Value': ann_vol, 'Format': 'percentage'},
-        'Sharpe Ratio': {'Value': sharpe, 'Format': 'decimal'},
-        'Max Drawdown': {'Value': max_drawdown, 'Format': 'percentage'},
-        'Win Rate': {'Value': win_rate, 'Format': 'percentage'},
-        'Avg Win': {'Value': avg_win, 'Format': 'percentage'},
-        'Avg Loss': {'Value': avg_loss, 'Format': 'percentage'},
-        'Profit Factor': {'Value': profit_factor, 'Format': 'decimal'},
         'Total Return': {'Value': total_return, 'Format': 'percentage'},
-        'Total Costs': {'Value': backtest_results['costs'].sum(), 'Format': 'percentage'}
+        'Annualized Return': {'Value': annual_return, 'Format': 'percentage'},
+        'Annual Volatility': {'Value': annual_vol, 'Format': 'percentage'},
+        'Sharpe Ratio': {'Value': sharpe, 'Format': 'decimal'},
+        'Maximum Drawdown': {'Value': max_drawdown, 'Format': 'percentage'},
     }
     
-    metrics_df = pd.DataFrame(metrics).T.reset_index().rename(columns={'index': 'Metric'})
+    # Add benchmark metrics if available
+    metrics.update(benchmark_metrics)
+    
+    # Convert to DataFrame
+    metrics_df = pd.DataFrame(metrics).T.reset_index()
+    metrics_df.columns = ['Metric', 'Value', 'Format']
+    
+    # Add formatted values
     metrics_df['Formatted Value'] = metrics_df.apply(
-        lambda x: f"{x['Value']:.2%}" if x['Format'] == 'percentage' and pd.notnull(x['Value']) 
+        lambda x: f"{x['Value']:.2%}" if x['Format'] == 'percentage' and pd.notnull(x['Value'])
         else f"{x['Value']:.2f}" if x['Format'] == 'decimal' and pd.notnull(x['Value'])
         else "N/A", axis=1
     )
