@@ -218,8 +218,8 @@ def render_portfolio_tab():
 
             # Add risk contributions to the weights dataframe
             weights_df = optimization_results['weights_df']
-            weights_df['Risk Cont. U. (%)'] = rc_unconstrained * 100
-            weights_df['Risk Cont. C. (%)'] = rc_constrained * 100
+            weights_df['Risk U. (%)'] = rc_unconstrained * 100
+            weights_df['Risk C. (%)'] = rc_constrained * 100
 
             # Display optimization results
             st.markdown("### Optimization Results")
@@ -228,7 +228,7 @@ def render_portfolio_tab():
             with col3:
                 st.subheader("Portfolio Weights")
                 st.dataframe(
-                    weights_df[['Asset', 'Formatted Unconstrained', 'Formatted Constrained', 'Risk Cont. U. (%)', 'Risk Cont. C. (%)']]
+                    weights_df[['Asset', 'Formatted Unconstrained', 'Formatted Constrained', 'Risk U. (%)', 'Risk C. (%)']]
                     .rename(columns={
                         'Formatted Unconstrained': 'Unconstrained',
                         'Formatted Constrained': 'Constrained'
@@ -406,7 +406,7 @@ def add_comprehensive_risk_analysis():
     for is_constrained, tab in [(True, const_tab), (False, unconst_tab)]:
         with tab:
             # Risk Metrics Section
-            metrics_col1, metrics_col2, metrics_col3, metrics_col4 = st.columns([0.75, 0.75, 2.5, 1.5])
+            metrics_col1, metrics_col2, metrics_col3, metrics_col4 = st.columns([0.8, 0.8, 2, 1.5])
             
             with metrics_col1:
                 st.markdown("#### Expected Metrics")
