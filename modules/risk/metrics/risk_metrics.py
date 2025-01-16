@@ -67,7 +67,7 @@ def calculate_risk_metrics(returns, weights, risk_free_rate=0.0):
     # Beta calculation
     beta = np.nan
     try:
-        market_data = yf.download('^GSPC', start=returns.index[0], end=returns.index[-1])['Adj Close']
+        market_data = yf.download('^GSPC', start=returns.index[0], end=returns.index[-1], auto_adjust=True)['Close']
         market_returns = market_data.pct_change().dropna()
         aligned = pd.concat([portfolio_returns, market_returns], axis=1).dropna()
         covariance = aligned.cov().iloc[0,1]

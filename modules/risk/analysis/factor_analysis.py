@@ -49,10 +49,11 @@ def calculate_factor_contribution(returns: pd.DataFrame,
             benchmark,
             start=returns.index[0],
             end=returns.index[-1],
-            progress=False
+            progress=False,
+            auto_adjust=True
         )
         
-        benchmark_returns = benchmark_data['Adj Close'].pct_change().dropna()
+        benchmark_returns = benchmark_data['Close'].pct_change().dropna()
         
         # Align dates
         common_dates = portfolio_returns.index.intersection(benchmark_returns.index)
