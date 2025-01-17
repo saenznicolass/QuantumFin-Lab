@@ -282,10 +282,9 @@ def render_portfolio_tab():
             add_factor_analysis_section()
 
 def plot_efficient_frontier(mu, S, weight_bounds, allow_short, optimization_results, risk_free_rate=0.0):
-    """Helper function to plot the efficient frontier"""
-    frontier_constrained = compute_efficient_frontier_points(
-        mu, S, weight_bounds, risk_free_rate
-    )
+    """Enhanced efficient frontier plot"""
+    # Generate frontier points
+    frontier_constrained = compute_efficient_frontier_points(mu, S, weight_bounds, risk_free_rate)
     frontier_unconstrained = compute_efficient_frontier_points(
         mu, S, 
         ((None, None) if allow_short else (0,1)),
@@ -294,13 +293,15 @@ def plot_efficient_frontier(mu, S, weight_bounds, allow_short, optimization_resu
 
     fig = go.Figure()
     
-    # Plot frontiers
+    # Plot frontiers with improved styling
     if frontier_constrained:
         vol_c, ret_c = zip(*frontier_constrained)
         fig.add_trace(go.Scatter(
             x=vol_c, y=ret_c,
             mode='lines',
-            name='Constrained Frontier'
+            name='Constrained Frontier',
+            line=dict(color='blue', width=2),
+            hovertemplate='Volatility: %{x:.2%}<br>Return: %{y:.2%}'
         ))
     
     if frontier_unconstrained:
@@ -308,32 +309,64 @@ def plot_efficient_frontier(mu, S, weight_bounds, allow_short, optimization_resu
         fig.add_trace(go.Scatter(
             x=vol_u, y=ret_u,
             mode='lines',
-            name='Unconstrained Frontier'
+            name='Unconstrained Frontier',
+            line=dict(color='black', width=2),
+            hovertemplate='Volatility: %{x:.2%}<br>Return: %{y:.2%}'
         ))
 
-    # Add optimal points
+    # Add optimal points with improved visibility
     perf_c = optimization_results['performance_constrained']
     perf_u = optimization_results['performance_unconstrained']
     
     fig.add_trace(go.Scatter(
         x=[perf_c[1]], y=[perf_c[0]],
         mode='markers',
-        marker=dict(size=10, color='red'),
-        name='Constrained Optimal'
+        marker=dict(size=12, color='red', symbol='star'),
+        name='Constrained Optimal',
+        hovertemplate='Volatility: %{x:.2%}<br>Return: %{y:.2%}'
     ))
     
     fig.add_trace(go.Scatter(
         x=[perf_u[1]], y=[perf_u[0]],
         mode='markers',
-        marker=dict(size=10, color='green'),
-        name='Unconstrained Optimal'
+        marker=dict(size=12, color='green', symbol='star'),
+        name='Unconstrained Optimal',
+        hovertemplate='Volatility: %{x:.2%}<br>Return: %{y:.2%}'
+    ))
+
+    # Add risk-free rate line
+    x_range = [0, max(max(vol_c), max(vol_u)) * 1.1]
+    y_values = [risk_free_rate, risk_free_rate]
+    fig.add_trace(go.Scatter(
+        x=x_range,
+        y=y_values,
+        mode='lines',
+        name='Risk-free Rate',
+        line=dict(color='gray', dash='dash'),
+        hovertemplate='Risk-free rate: %{y:.2%}'
     ))
 
     fig.update_layout(
-        title="Efficient Frontier",
+        title={
+            'text': "Portfolio Efficient Frontier",
+            'y':0.95,
+            'x':0.5,
+            'xanchor': 'center',
+            'yanchor': 'top'
+        },
         xaxis_title="Annualized Volatility",
         yaxis_title="Expected Annual Return",
-        hovermode='closest'
+        xaxis=dict(tickformat='.0%'),
+        yaxis=dict(tickformat='.0%'),
+        hovermode='closest',
+        showlegend=True,
+        legend=dict(
+            yanchor="top",
+            y=0.99,
+            xanchor="left",
+            x=0.01
+        ),
+        template='plotly_white'
     )
     
     st.plotly_chart(fig, use_container_width=True)
@@ -644,7 +677,7 @@ def run_detailed_monte_carlo_analysis(is_constrained: bool, confidence_level: fl
         )
     
     returns = st.session_state.data.pct_change().dropna()
-    sim_returns, mc_paths = monte_carlo_portfolio_simulation(
+    sim_returns, final_values, mc_paths = monte_carlo_portfolio_simulation(
         returns, weights, 
         n_simulations=n_sim,
         time_horizon=time_horizon
@@ -667,9 +700,9 @@ def run_detailed_monte_carlo_analysis(is_constrained: bool, confidence_level: fl
     with col2:
         st.metric("Volatility", f"{sim_std:.2%}")
     with col3:
-        st.metric("VaR", f"{-sim_var:.2%}")
+        st.metric("VaR", f"{sim_var:.2%}")
     with col4:
-        st.metric("CVaR", f"{-sim_cvar:.2%}")
+        st.metric("CVaR", f"{sim_cvar:.2%}")
     with col5:
         st.metric("Skewness", f"{sim_skew:.2f}")
     with col6:
@@ -715,15 +748,15 @@ def run_detailed_monte_carlo_analysis(is_constrained: bool, confidence_level: fl
     
     with col2:
         # Path analysis with confidence bands
-        final_values = np.exp(np.log1p(mc_paths).cumsum(axis=1))
+        final_values = final_values
         median_path = np.median(final_values, axis=0)
         lower_band = np.percentile(final_values, (1 - confidence_level) * 100, axis=0)
         upper_band = np.percentile(final_values, confidence_level * 100, axis=0)
         
         fig_paths = go.Figure()
         
-        # Add sample paths
-        for i in range(min(10, mc_paths.shape[0])):
+        # Add 1000 paths
+        for i in range(min(500, mc_paths.shape[0])):
             fig_paths.add_trace(go.Scatter(
                 y=final_values[i],
                 mode='lines',

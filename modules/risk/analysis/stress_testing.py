@@ -45,7 +45,14 @@ def monte_carlo_portfolio_simulation(
     # Sum log returns and exponentiate
     final_returns = np.exp(portfolio_daily.cumsum(axis=1)[:, -1]) - 1
     daily_paths = np.exp(portfolio_daily.cumsum(axis=1)) - 1
-    return final_returns, daily_paths
+    
+    # Simplified transformation
+    final_values = (1 + portfolio_daily).cumprod(axis=1)
+    
+    # Add normalization
+    final_values = final_values / final_values[:, 0].reshape(-1, 1)
+    
+    return final_returns, final_values, daily_paths
 
 def run_stress_test_scenarios(portfolio_returns, scenarios_dict, confidence_level=0.95):
     """
