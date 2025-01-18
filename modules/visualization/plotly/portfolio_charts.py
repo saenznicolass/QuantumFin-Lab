@@ -8,14 +8,14 @@ def plot_efficient_frontier(mu, S, weight_bounds, allow_short, optimization_resu
     # Generate frontier points
     frontier_constrained = compute_efficient_frontier_points(mu, S, weight_bounds, risk_free_rate)
     frontier_unconstrained = compute_efficient_frontier_points(
-        mu, S, 
+        mu, S,
         ((None, None) if allow_short else (0,1)),
         risk_free_rate
     )
 
     fig = go.Figure()
-    
-    # Plot frontiers with improved styling
+
+    # Plot frontiers with styling
     if frontier_constrained:
         vol_c, ret_c = zip(*frontier_constrained)
         fig.add_trace(go.Scatter(
@@ -25,7 +25,7 @@ def plot_efficient_frontier(mu, S, weight_bounds, allow_short, optimization_resu
             line=dict(color='blue', width=2),
             hovertemplate='Volatility: %{x:.2%}<br>Return: %{y:.2%}'
         ))
-    
+
     if frontier_unconstrained:
         vol_u, ret_u = zip(*frontier_unconstrained)
         fig.add_trace(go.Scatter(
@@ -39,7 +39,7 @@ def plot_efficient_frontier(mu, S, weight_bounds, allow_short, optimization_resu
     # Add optimal points with improved visibility
     perf_c = optimization_results['performance_constrained']
     perf_u = optimization_results['performance_unconstrained']
-    
+
     fig.add_trace(go.Scatter(
         x=[perf_c[1]], y=[perf_c[0]],
         mode='markers',
@@ -47,7 +47,7 @@ def plot_efficient_frontier(mu, S, weight_bounds, allow_short, optimization_resu
         name='Constrained Optimal',
         hovertemplate='Volatility: %{x:.2%}<br>Return: %{y:.2%}'
     ))
-    
+
     fig.add_trace(go.Scatter(
         x=[perf_u[1]], y=[perf_u[0]],
         mode='markers',
@@ -90,7 +90,7 @@ def plot_efficient_frontier(mu, S, weight_bounds, allow_short, optimization_resu
         ),
         template='plotly_white'
     )
-    
+
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -112,7 +112,7 @@ def plot_simulation_distribution(sim_returns, is_constrained):
 def plot_simulation_paths(mc_paths, is_constrained):
     """Plot Monte Carlo simulation paths"""
     fig = go.Figure()
-    
+
     # Plot a sample of paths
     for i in range(min(20, mc_paths.shape[0])):
         fig.add_trace(go.Scatter(
@@ -122,7 +122,7 @@ def plot_simulation_paths(mc_paths, is_constrained):
             name=f"Path {i+1}",
             showlegend=False
         ))
-    
+
     fig.update_layout(
         title=f"{'Constrained' if is_constrained else 'Unconstrained'} Monte Carlo Paths",
         xaxis_title="Time",

@@ -8,30 +8,30 @@ from modules.visualization.plotly.portfolio_charts import plot_efficient_frontie
 from modules.models.portfolio.optimization import run_portfolio_optimization
 from modules.risk.metrics.risk_metrics import calculate_risk_contribution
 from modules.visualization.streamlit.portfolio_add import (
-    add_backtest_section, add_comprehensive_risk_analysis, 
-    add_factor_analysis_section, add_monte_carlo_stress_section, 
+    add_backtest_section, add_comprehensive_risk_analysis,
+    add_factor_analysis_section, add_monte_carlo_stress_section,
     add_portfolio_analysis_section)
-    
+
 def render_portfolio_tab():
     """Renders the Portfolio Optimization Dashboard"""
-    
+
     # Professional header
     st.markdown("""
         <div style='text-align: center; background-color: #f0f2f6; padding: 1rem; border-radius: 10px; margin-bottom: 2rem;'>
             <h1>Portfolio Optimization Suite</h1>
-            <p>Advanced portfolio management and optimization tools</p>
+            <p>Portfolio management and optimization tools</p>
         </div>
     """, unsafe_allow_html=True)
 
     # Initialize session state if needed
     if 'data' not in st.session_state:
         st.session_state.data = None
-        
+
     setup_tab, optimization_tab, analysis_tab = st.tabs(["Portfolio Setup", "Optimization", "Analysis & Insights"])
-    
+
     with setup_tab:
         st.markdown("### Asset Selection & Configuration")
-        
+
         # Asset selection
         tickers = st.multiselect(
             "Select Assets",
@@ -39,7 +39,7 @@ def render_portfolio_tab():
             default=DEFAULT_TICKERS,
             help="Choose the assets to include in your portfolio"
         )
-        
+
         # Date selection
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -54,7 +54,7 @@ def render_portfolio_tab():
                 value=pd.Timestamp.now(),
                 help="Select the end date for historical data"
             )
-        with col3:    
+        with col3:
             # Risk-free rate input
             risk_free_rate = st.slider(
                 "Annual Risk-Free Rate (%)",
@@ -64,23 +64,20 @@ def render_portfolio_tab():
                 step=0.1,
                 help="Set the annual risk-free rate for calculations"
             ) / 100.0
-        
+
         # Store risk-free rate in session state
         st.session_state['risk_free_rate'] = risk_free_rate
-        
+
         # Trading constraints
         allow_short = st.checkbox(
             "Allow Short Selling",
             value=False,
             help="Enable short selling of assets"
         )
-        
-        # Data refresh - modified to include date range
         if st.button("Update Market Data"):
             get_data.clear()
             st.session_state.data = None
 
-        # Update how we fetch data to include date range
         if st.session_state.data is None and tickers:
             with st.spinner("Loading market data..."):
                 st.session_state.data = get_data(
@@ -109,7 +106,7 @@ def render_portfolio_tab():
 
         # Optimization parameters
         col1, col2 = st.columns(2)
-        
+
         with col1:
             st.markdown("#### Optimization Parameters")
             optimization_objective = st.selectbox(
@@ -209,7 +206,7 @@ def render_portfolio_tab():
             # Display optimization results
             st.markdown("### Optimization Results")
             col3, col4, col5 = st.columns([1.4, 2, 1])
-            
+
             with col3:
                 st.subheader("Portfolio Weights")
                 st.dataframe(
@@ -250,18 +247,18 @@ def render_portfolio_tab():
             "Backtesting",
             "Factor Analysis"
         ])
-        
+
         with overview_subtab:
             add_portfolio_analysis_section()
-        
+
         with risk_subtab:
             add_comprehensive_risk_analysis()
-        
+
         with mc_stress_subtab:
             add_monte_carlo_stress_section()
-        
+
         with backtest_subtab:
             add_backtest_section()
-        
+
         with factor_subtab:
             add_factor_analysis_section()

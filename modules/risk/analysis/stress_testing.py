@@ -7,14 +7,14 @@ import plotly.graph_objects as go
 
 
 def monte_carlo_portfolio_simulation(
-    returns, 
-    weights, 
-    n_simulations=10000, 
+    returns,
+    weights,
+    n_simulations=10000,
     time_horizon=252
 ):
     """
     Simulate portfolio returns using a basic lognormal assumption.
-    
+
     :param returns: DataFrame of asset returns
     :param weights: dict or array of portfolio weights
     :param n_simulations: number of Monte Carlo runs
@@ -45,20 +45,20 @@ def monte_carlo_portfolio_simulation(
     # Sum log returns and exponentiate
     final_returns = np.exp(portfolio_daily.cumsum(axis=1)[:, -1]) - 1
     daily_paths = np.exp(portfolio_daily.cumsum(axis=1)) - 1
-    
+
     # Simplified transformation
     final_values = (1 + portfolio_daily).cumprod(axis=1)
-    
+
     # Add normalization
     final_values = final_values / final_values[:, 0].reshape(-1, 1)
-    
+
     return final_returns, final_values, daily_paths
 
 def run_stress_test_scenarios(portfolio_returns, scenarios_dict, confidence_level=0.95):
     """
-    Apply each stress scenario (as a shock) to the portfolio returns 
+    Apply each stress scenario (as a shock) to the portfolio returns
     and compute stats like VaR, CVaR, max loss, etc.
-    
+
     :param portfolio_returns: 1D array of daily portfolio returns
     :param scenarios_dict: dict of scenario -> shock_value (e.g. -0.2 for -20%)
     :param confidence_level: float (e.g., 0.95)
@@ -72,7 +72,6 @@ def run_stress_test_scenarios(portfolio_returns, scenarios_dict, confidence_leve
         var_s = np.percentile(shocked_returns, (1 - confidence_level) * 100)
         cvar_s = shocked_returns[shocked_returns <= var_s].mean()
         max_loss = shocked_returns.min() if len(shocked_returns) > 0 else np.nan
-        # Some placeholder for "Recovery time" or any other metric
         # For demonstration, define "recovery_time" as how many days returns < 0
         recovery_time = np.sum(shocked_returns < 0)
 
@@ -90,7 +89,7 @@ def run_stress_test_scenarios(portfolio_returns, scenarios_dict, confidence_leve
 def plot_stress_test_scenarios(scenarios_df):
     """
     Create a bar chart of scenario shock impacts.
-    
+
     :param scenarios_df: DataFrame with scenario results (Scenario, Shock(%), VaR, CVaR, etc.)
     :return: plotly Figure
     """

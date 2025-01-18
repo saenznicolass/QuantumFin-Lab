@@ -37,10 +37,7 @@ def calculate_risk_parity_weights(returns, initial_guess=None):
     constraints = [
         {'type': 'eq', 'fun': lambda w: np.sum(w) - 1.0},
     ]
-    # For no short selling, add w >= 0 constraints:
-    # but let's allow negative if you want to do short
-    # so we won't specify bounds here unless you'd like to.
-
+    # For no short selling, add w >= 0 constraints
     result = minimize(
         risk_parity_objective,
         initial_guess,
@@ -52,5 +49,4 @@ def calculate_risk_parity_weights(returns, initial_guess=None):
         return []
 
     weights_opt = result.x
-    # If result.x has negative values but you don't want short, you'd clamp or re-normalize
     return weights_opt

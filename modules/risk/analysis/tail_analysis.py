@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 def extreme_value_analysis(returns, weights, threshold_percentile=5):
     """
     Perform an extreme value analysis for portfolio returns below a certain percentile.
-    
+
     :param returns: DataFrame of asset returns
     :param weights: dict or array of weights
     :param threshold_percentile: int, e.g. 5 for the bottom 5% tail
@@ -28,7 +28,7 @@ def extreme_value_analysis(returns, weights, threshold_percentile=5):
     tail_mean = tail_returns.mean() if len(tail_returns) else np.nan
     tail_vol = tail_returns.std() if len(tail_returns) else np.nan
     # 5% VaR in the tail, or we can default to a fixed 5% if desired
-    tail_var = -np.percentile(tail_returns, 5) if len(tail_returns) else np.nan
+    tail_var = -np.percentile(tail_returns, threshold_percentile) if len(tail_returns) else np.nan
     tail_cvar = -tail_returns[tail_returns <= -tail_var].mean() if len(tail_returns) and tail_var and not np.isnan(tail_var) else np.nan
 
     return {
@@ -43,7 +43,7 @@ def analyze_tail_risk(returns, weights, threshold=0.05):
     """
     Analyze tail risk using a threshold approach (like EV theory).
     If threshold=0.05, we look at the bottom 5% returns.
-    
+
     :param returns: DataFrame of asset returns
     :param weights: array or dict of portfolio weights
     :param threshold: float, e.g. 0.05
@@ -75,7 +75,7 @@ def analyze_tail_risk(returns, weights, threshold=0.05):
 def create_qq_plot(returns, weights):
     """
     Create a Q-Q plot for portfolio returns vs a Normal distribution.
-    
+
     :param returns: DataFrame of asset returns
     :param weights: dict or array of portfolio weights
     :return: plotly Figure

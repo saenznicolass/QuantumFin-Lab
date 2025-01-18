@@ -85,7 +85,6 @@ def render_option_pricing_tab():
     st.header("Black-Scholes Option Pricing and Greeks")
 
     # --- Global Input Parameters from Sidebar (example) ---
-    # For a real app, you'd likely pull these from st.session_state or pass them as function params
     S_global = st.session_state.get('S_global', 100.0)
     K_global = st.session_state.get('K_global', 100.0)
     T_global = st.session_state.get('T_global', 1.0)

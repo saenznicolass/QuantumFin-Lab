@@ -6,7 +6,7 @@ from scipy.stats import norm
 
 def asian_option_pricing(S, K, T, r, sigma, option_type='call'):
     """
-    Calculate an approximate price for an arithmetic Asian option using 
+    Calculate an approximate price for an arithmetic Asian option using
     a simplification (average price ~ current price).
     """
     try:
@@ -16,7 +16,6 @@ def asian_option_pricing(S, K, T, r, sigma, option_type='call'):
         return option_price
     except Exception:
         return np.nan
-
 
 def geometric_asian_option_pricing(S, K, T, r, sigma, option_type='call'):
     """
