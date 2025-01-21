@@ -218,7 +218,7 @@ def plot_monthly_returns_heatmap(returns: pd.Series) -> go.Figure:
         Daily returns series
     """
     # Calculate monthly returns
-    monthly_returns = returns.resample('M').apply(
+    monthly_returns = returns.resample('ME').apply(
         lambda x: (1 + x).prod() - 1
     ).to_frame()
     

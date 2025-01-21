@@ -11,8 +11,7 @@ class TripleMAStrategy(TechnicalStrategy):
             'short_window': 5,
             'medium_window': 21,
             'long_window': 63,
-            'min_trend_strength': 0.02,
-            'position_size': 0.1
+            'min_trend_strength': 0.02
         }
         # Update default parameters with provided ones
         self.params = {**self.required_params, **parameters}

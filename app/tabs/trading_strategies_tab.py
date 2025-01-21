@@ -21,6 +21,7 @@ from modules.trading.backtest.engine import BacktestEngine
 from modules.visualization.streamlit.strategy_display import display_strategy_dashboard
 from modules.market_data.providers.yahoo import fetch_market_data
 
+from modules.trading.backtest.position_sizer import PositionSizer
 
 
 
@@ -49,8 +50,8 @@ def render_trading_strategies_tab():
     lookback_period = st.sidebar.slider(
         "Lookback Period (Years)",
         min_value=1,
-        max_value=10,
-        value=2
+        max_value=15,
+        value=10
     )
     
     # Strategy specific parameters
@@ -58,8 +59,13 @@ def render_trading_strategies_tab():
     
     # Risk management parameters
     st.sidebar.subheader("Risk Management")
-    stop_loss = st.sidebar.slider("Stop Loss (%)", 0.0, 20.0, 2.0) / 100
-    take_profit = st.sidebar.slider("Take Profit (%)", 0.0, 40.0, 6.0) / 100
+    stop_loss = st.sidebar.slider("Stop Loss (%)", 0.0, 40.0, 2.0) / 100
+    take_profit = st.sidebar.slider("Take Profit (%)", 0.0, 5.0, 1.0) / 100
+    
+    # Position Sizing Parameters
+    st.sidebar.subheader("Position Sizing")
+    risk_per_trade = st.sidebar.slider("Risk per Trade (%)", 0.1, 15.0, 2.0) / 100
+    max_position_size = st.sidebar.slider("Max Position Size (%)", 1.0, 25.0, 20.0) / 100
     
     # Execution parameters
     st.sidebar.subheader("Execution Settings")
@@ -111,6 +117,15 @@ def render_trading_strategies_tab():
             commission=commission
         )
         
+        # Configurar position sizer con los parámetros del usuario
+        engine.position_sizer = PositionSizer({
+            'risk_per_trade': risk_per_trade,
+            'max_position_size': max_position_size,
+            'portfolio_value': initial_capital,
+            'atr_factor': 2.0,
+            'volatility_adjust': True
+        })
+        
         results = engine.run_backtest(
             stop_loss=stop_loss,
             take_profit=take_profit
@@ -157,6 +172,15 @@ def render_trading_strategies_tab():
                         initial_capital=initial_capital,
                         commission=commission
                     )
+                    
+                    # Aplicar los mismos parámetros de position sizing
+                    engine.position_sizer = PositionSizer({
+                        'risk_per_trade': risk_per_trade,
+                        'max_position_size': max_position_size,
+                        'portfolio_value': initial_capital,
+                        'atr_factor': 2.0,
+                        'volatility_adjust': True
+                    })
                     
                     result = engine.run_backtest(
                         stop_loss=stop_loss,
@@ -205,11 +229,10 @@ def get_strategy_parameters(strategy_type: str) -> Dict:
     """Get default parameters for selected strategy"""
     if strategy_type == "Triple Moving Average":
         return {
-            'short_window': st.sidebar.slider("Short Window", 1, 20, 5),
-            'medium_window': st.sidebar.slider("Medium Window", 10, 50, 21),
-            'long_window': st.sidebar.slider("Long Window", 30, 200, 63),
-            'min_trend_strength': st.sidebar.slider("Min Trend Strength", 0.0, 0.1, 0.02),
-            'position_size': st.sidebar.slider("Position Size", 0.0, 1.0, 0.1)
+            'short_window': st.sidebar.slider("Short Window", 1, 20, 3),
+            'medium_window': st.sidebar.slider("Medium Window", 10, 50, 10),
+            'long_window': st.sidebar.slider("Long Window", 30, 200, 38),
+            'min_trend_strength': st.sidebar.slider("Min Trend Strength", 0.0, 0.1, 0.02)
         }
     elif strategy_type == "Adaptive EMA":
         return {

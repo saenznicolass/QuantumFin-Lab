@@ -5,6 +5,7 @@ import pandas as pd
 import streamlit as st
 from scipy.stats import norm
 from modules.config.constants import TRADING_DAYS_PER_YEAR
+from ..metrics.drawdown import analyze_drawdowns
 
 def calculate_var(payoffs, confidence_level=0.95):
     """
@@ -59,11 +60,10 @@ def calculate_risk_metrics(returns, weights, risk_free_rate=0.0, expected_return
     
     sortino_ratio = (realized_ann_return - risk_free_rate) / downside_std if downside_std and downside_std > 0 else np.nan
 
-    # Maximum Drawdown
-    cum_returns = (1 + portfolio_returns).cumprod()
-    running_max = cum_returns.cummax()
-    drawdowns = (cum_returns - running_max) / running_max
-    max_drawdown = drawdowns.min() if len(drawdowns) > 0 else np.nan
+    # Usar DrawdownAnalyzer en lugar de cálculo directo
+    portfolio_values = (1 + portfolio_returns).cumprod()
+    drawdown_analyzer = analyze_drawdowns(portfolio_values)
+    drawdown_metrics = drawdown_analyzer.get_summary_metrics()
 
     # Beta calculation
     beta = np.nan
@@ -82,7 +82,8 @@ def calculate_risk_metrics(returns, weights, risk_free_rate=0.0, expected_return
         'Annual Volatility': {'Value': ann_vol, 'Format': 'percentage'}, 
         'Sharpe Ratio': {'Value': sharpe_ratio, 'Format': 'decimal'},
         'Sortino Ratio': {'Value': sortino_ratio, 'Format': 'decimal'},
-        'Max Drawdown': {'Value': max_drawdown, 'Format': 'percentage'},
+        'Max Drawdown': {'Value': drawdown_metrics['max_drawdown'], 'Format': 'percentage'},
+        'Recovery Factor': {'Value': drawdown_analyzer.calculate_recovery_factor(), 'Format': 'decimal'},
         'Beta': {'Value': beta, 'Format': 'decimal'},
         'Daily VaR (95%)': {'Value': calculate_var(portfolio_returns, 0.95), 'Format': 'percentage'},
         'CVaR (95%)': {'Value': calculate_cvar(portfolio_returns, 0.95), 'Format': 'percentage'}
@@ -97,7 +98,7 @@ def calculate_risk_metrics(returns, weights, risk_free_rate=0.0, expected_return
             'Expected Volatility': {'Value': ann_vol, 'Format': 'percentage'}, # Using same volatility
             'Expected Sharpe': {'Value': exp_sharpe, 'Format': 'decimal'},
             'Expected Sortino': {'Value': exp_sortino, 'Format': 'decimal'},
-            'Expected Max DD': {'Value': max_drawdown, 'Format': 'percentage'},  # Using same drawdown
+            'Expected Max DD': {'Value': drawdown_metrics['max_drawdown'], 'Format': 'percentage'},  # Using same drawdown
             'Expected Beta': {'Value': beta, 'Format': 'decimal'},  # Using same beta
             'Expected VaR (95%)': {'Value': calculate_var(portfolio_returns, 0.95), 'Format': 'percentage'},
             'Expected CVaR (95%)': {'Value': calculate_cvar(portfolio_returns, 0.95), 'Format': 'percentage'}

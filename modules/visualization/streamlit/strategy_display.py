@@ -3,12 +3,15 @@ import plotly.graph_objects as go
 import pandas as pd
 from typing import Dict, Optional
 import traceback
+import numpy as np
+from plotly.subplots import make_subplots
 
 from ..plotly.technical_charts import (
     plot_strategy_signals,
     plot_equity_curve,
     plot_monthly_returns_heatmap
 )
+from ...risk.metrics.drawdown import analyze_drawdowns
 
 def display_strategy_dashboard(
     strategy_results: Dict,
@@ -81,24 +84,103 @@ def display_strategy_dashboard(
             if 'trades' in strategy_results and len(strategy_results['trades']) > 0:
                 st.subheader("Trade Summary")
                 trades_df = strategy_results['trades']
-                st.dataframe(trades_df)
-        
+                
+                # Group trades by entry/exit pairs
+                if 'trade_id' not in trades_df.columns:
+                    trades_df['trade_id'] = np.nan
+                    current_id = 0
+                    for i in range(0, len(trades_df)-1, 2):  # Skip last row if unpaired
+                        trades_df.iloc[i:i+2, trades_df.columns.get_loc('trade_id')] = current_id
+                        current_id += 1
+
+                # Calculate trade metrics only for complete trades (entry + exit pairs)
+                complete_trades = trades_df.dropna(subset=['trade_id']).copy()
+                
+                if len(complete_trades) > 0:
+                    trade_metrics = complete_trades.groupby('trade_id').agg({
+                        'entry_date': 'first',
+                        'entry_signal': 'first',
+                        'entry_price': 'first',
+                        'exit_date': 'last',
+                        'exit_signal': 'last',
+                        'exit_price': 'last',
+                        'position_size': 'first',
+                        'commission': 'sum',
+                        'pnl': 'sum'
+                    }).reset_index()
+                    
+                    trade_metrics['return_pct'] = ((trade_metrics['exit_price'] - trade_metrics['entry_price']) / 
+                                                 trade_metrics['entry_price'] * 100 * 
+                                                 np.where(trade_metrics['entry_signal'].str.contains('Short'), -1, 1))
+                    
+                    display_columns = [
+                        'entry_date', 'entry_signal', 'entry_price',
+                        'exit_date', 'exit_signal', 'exit_price',
+                        'position_size', 'commission', 'pnl', 'return_pct'
+                    ]
+
+                    st.dataframe(
+                        trade_metrics[display_columns]
+                        .style.format({
+                            'entry_price': '{:.2f}',
+                            'exit_price': '{:.2f}',
+                            'position_size': '{:.2f}',
+                            'commission': '{:.2f}',
+                            'pnl': '{:.2f}',
+                            'return_pct': '{:.2f}%'
+                        })
+                    )
+
+                    # Update metadata with corrected trade counts
+                    strategy_results['performance']['Trading Stats'].update({
+                        'total_trades': len(trade_metrics),
+                        'winning_trades': len(trade_metrics[trade_metrics['pnl'] > 0]),
+                        'losing_trades': len(trade_metrics[trade_metrics['pnl'] < 0]),
+                        'win_rate': len(trade_metrics[trade_metrics['pnl'] > 0]) / len(trade_metrics),
+                        'profit_factor': (trade_metrics[trade_metrics['pnl'] > 0]['pnl'].sum() /
+                                        abs(trade_metrics[trade_metrics['pnl'] < 0]['pnl'].sum()))
+                    })
+
         with performance_tab:
             st.subheader("Performance Analysis")
             
             col1, col2 = st.columns(2)
             
             with col1:
-                # Display key metrics
-                metrics = strategy_results['performance']
-                st.metric("Total Return", f"{metrics['Returns']['total_return']:.2%}")
-                st.metric("Sharpe Ratio", f"{metrics['Risk-Adjusted']['sharpe_ratio']:.2f}")
-                st.metric("Max Drawdown", f"{metrics['Returns']['max_drawdown']:.2%}")
+                # Display key metrics with safe access to nested dictionaries
+                metrics = strategy_results.get('performance', {})
+                
+                # Safely access nested values with get()
+                returns_metrics = metrics.get('Returns', {})
+                risk_adj_metrics = metrics.get('Risk-Adjusted', {})
+                trading_stats = metrics.get('Trading Stats', {})
+                
+                st.metric(
+                    "Total Return", 
+                    f"{returns_metrics.get('total_return', 0):.2%}"
+                )
+                st.metric(
+                    "Sharpe Ratio", 
+                    f"{risk_adj_metrics.get('sharpe_ratio', 0):.2f}"
+                )
+                st.metric(
+                    "Max Drawdown", 
+                    f"{returns_metrics.get('max_drawdown', 0):.2%}"
+                )
             
             with col2:
-                st.metric("Win Rate", f"{metrics['Trading Stats']['win_rate']:.2%}")
-                st.metric("Profit Factor", f"{metrics['Trading Stats'].get('profit_factor', 0):.2f}")
-                st.metric("Recovery Factor", f"{metrics['Risk-Adjusted'].get('recovery_factor', 0):.2f}")
+                st.metric(
+                    "Win Rate", 
+                    f"{trading_stats.get('win_rate', 0):.2%}"
+                )
+                st.metric(
+                    "Profit Factor", 
+                    f"{trading_stats.get('profit_factor', 0):.2f}"
+                )
+                st.metric(
+                    "Recovery Factor", 
+                    f"{risk_adj_metrics.get('recovery_factor', 0):.2f}"
+                )
             
             # Plot equity curve
             fig_equity = plot_equity_curve(
@@ -112,28 +194,82 @@ def display_strategy_dashboard(
                 strategy_results['results']['returns']
             )
             st.plotly_chart(fig_heatmap, use_container_width=True)
-        
+            
+            # Unified drawdown visualization
+            if 'portfolio_value' in strategy_results['results']:
+                st.subheader("Drawdown Analysis")
+                
+                drawdown_info = strategy_results['performance']['Drawdown Analysis']
+                
+                # Display summary metrics
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Maximum Drawdown", 
+                             f"{drawdown_info['summary']['max_drawdown']:.2%}")
+                    st.metric("Current Drawdown", 
+                             f"{drawdown_info['summary']['current_drawdown']:.2%}")
+                
+                with col2:
+                    st.metric("Total Underwater Periods", 
+                             f"{drawdown_info['underwater_periods']['total_periods']}")
+                    st.metric("Avg Recovery Time", 
+                             f"{drawdown_info['recovery_stats']['avg_recovery_time']:.1f} days")
+                
+                with col3:
+                    st.metric("Max Recovery Time", 
+                             f"{drawdown_info['recovery_stats']['max_recovery_time']:.1f} days")
+                    st.metric("Total Recoveries", 
+                             str(drawdown_info['recovery_stats']['total_recoveries']))
+                
+                # Display worst drawdowns
+                if drawdown_info['worst_drawdowns']:
+                    st.subheader("Worst Drawdowns")
+                    worst_dd_df = pd.DataFrame(drawdown_info['worst_drawdowns'])
+                    st.dataframe(
+                        worst_dd_df.style.format({
+                            'depth': '{:.2%}',
+                            'duration': '{:.0f} days'
+                        })
+                    )
+
+                # Display drawdown chart
+                fig = make_subplots(rows=2, cols=1, shared_xaxes=True)
+                # ...existing drawdown chart code...
+
+        def format_metric_value(value: float, metric_type: str) -> str:
+            """Format metric value based on its type"""
+            if metric_type in ['total_return', 'annualized_return', 'max_drawdown', 
+                              'annualized_volatility', 'downside_volatility', 'win_rate']:
+                return f"{value:.2%}"
+            elif metric_type in ['sharpe_ratio', 'sortino_ratio', 'profit_factor', 
+                                'recovery_factor']:
+                return f"{value:.2f}"
+            else:
+                return f"{value:.2f}"
+
         with metrics_tab:
             st.subheader("Risk Metrics")
             
-            # Create metrics columns
-            col1, col2, col3 = st.columns(3)
+            # Create metrics columns with error handling
+            col1, col2, col3, col4 = st.columns(4)
             
-            with col1:
-                st.markdown("### Returns")
-                for metric, value in metrics['Returns'].items():
-                    st.metric(metric, f"{value:.2%}")
-            
-            with col2:
-                st.markdown("### Risk Metrics")
-                for metric, value in metrics['Risk Metrics'].items():
-                    st.metric(metric, f"{value:.2%}")
-            
-            with col3:
-                st.markdown("### Risk-Adjusted")
-                for metric, value in metrics['Risk-Adjusted'].items():
-                    st.metric(metric, f"{value:.2f}")
-            
+            # Helper function to safely display metrics
+            def display_section_metrics(container, section_name, metrics_dict):
+                with container:
+                    st.markdown(f"### {section_name}")
+                    if section_name in metrics_dict:
+                        for metric, value in metrics_dict[section_name].items():
+                            formatted_value = format_metric_value(value, metric)
+                            st.metric(metric.replace('_', ' ').title(), formatted_value)
+                    else:
+                        st.warning(f"No {section_name.lower()} metrics available")
+
+            # Display each section with error handling
+            display_section_metrics(col1, "Returns", metrics)
+            display_section_metrics(col2, "Risk Metrics", metrics)
+            display_section_metrics(col3, "Risk-Adjusted", metrics)
+            display_section_metrics(col4, "Trading Stats", metrics)
+
             # Display rolling metrics if available
             if 'rolling_metrics' in strategy_results:
                 st.subheader("Rolling Analysis")

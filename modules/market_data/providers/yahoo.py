@@ -26,7 +26,7 @@ def fetch_market_data(ticker: str, lookback_years: int = 2) -> pd.DataFrame:
 
         # Ensure proper column names
         column_mapping = {
-            'Adj Close': 'Close',  # Use Adjusted Close as Close
+            'Close': 'Close',  # Adjusted Close as Close if necesary 
             'Open': 'Open',
             'High': 'High',
             'Low': 'Low',

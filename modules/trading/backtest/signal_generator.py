@@ -44,6 +44,14 @@ class SignalGenerator:
         entries['short_entry'] = ((signals['signal'] == -1) & 
                                 (signals['signal'].shift(1) != -1)).astype(int)
         
+        # Add trade_id to track entry/exit pairs
+        entries['trade_id'] = np.nan
+        current_id = 0
+        for i in range(len(entries)):
+            if entries.iloc[i]['long_entry'] or entries.iloc[i]['short_entry']:
+                entries.iloc[i, entries.columns.get_loc('trade_id')] = current_id
+                current_id += 1
+        
         # Add price levels for entry
         entries['entry_price'] = np.nan
         entries.loc[entries['long_entry'] == 1, 'entry_price'] = signals.loc[entries['long_entry'] == 1, 'entry_price']

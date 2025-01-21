@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 from typing import Dict, Optional
+from ..metrics.drawdown import analyze_drawdowns
 
 def run_backtest(
     data: pd.DataFrame,
@@ -109,6 +110,10 @@ def calculate_backtest_metrics(backtest_results: pd.DataFrame) -> pd.DataFrame:
     drawdowns = (cum_returns - rolling_max) / rolling_max
     max_drawdown = drawdowns.min()
     
+    # Usar DrawdownAnalyzer para análisis de drawdown
+    drawdown_analyzer = analyze_drawdowns(backtest_results['portfolio_value'])
+    drawdown_metrics = drawdown_analyzer.get_complete_drawdown_metrics()
+    
     # Calculate benchmark-relative metrics if available
     benchmark_metrics = {}
     if 'benchmark_value' in backtest_results.columns:
@@ -142,6 +147,7 @@ def calculate_backtest_metrics(backtest_results: pd.DataFrame) -> pd.DataFrame:
         'Annual Volatility': {'Value': annual_vol, 'Format': 'percentage'},
         'Sharpe Ratio': {'Value': sharpe, 'Format': 'decimal'},
         'Maximum Drawdown': {'Value': max_drawdown, 'Format': 'percentage'},
+        'Drawdown Analysis': drawdown_metrics,
     }
     
     # Add benchmark metrics if available
