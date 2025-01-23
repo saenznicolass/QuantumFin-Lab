@@ -304,7 +304,7 @@ def display_historical_data():
     """Displays historical Federal Funds Rate data."""
     try:
         ffr_data = pd.read_csv(
-            "QuantumFin-Lab/data/IR/federal_funds_rate.csv",
+            "data/IR/federal_funds_rate.csv",
             index_col=0,
             parse_dates=True
         )
