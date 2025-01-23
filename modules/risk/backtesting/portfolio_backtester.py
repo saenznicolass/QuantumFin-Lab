@@ -7,7 +7,7 @@ from ..metrics.drawdown import analyze_drawdowns
 def run_backtest(
     data: pd.DataFrame,
     weights: Dict[str, float],
-    rebalance_frequency: str = "M",
+    rebalance_frequency: str = "ME",
     transaction_costs: float = 0.001,
     benchmark: Optional[str] = None
 ) -> pd.DataFrame:

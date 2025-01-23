@@ -1,0 +1,26 @@
+RESUMEN DEL DATASET: federal_funds_rate
+======================================
+
+Rango de fechas: 1954-07-01 00:00:00 a 2024-12-01 00:00:00
+
+Dimensiones: 846 filas x 1 columnas
+
+Columnas disponibles:
+- value
+
+Estadísticas descriptivas:
+            value
+count  846.000000
+mean     4.609350
+std      3.567592
+min      0.050000
+25%      1.822500
+50%      4.280000
+75%      6.162500
+max     19.100000
+
+Valores faltantes por columna:
+value    0
+
+Tipos de datos:
+value    float64

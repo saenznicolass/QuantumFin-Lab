@@ -1,21 +1,24 @@
-from tabs.trading_strategies_tab import render_trading_strategies_tab
-import streamlit as st
+import os
 import sys
-from pathlib import Path
 
-# Add project root to Python path
-root_dir = Path(__file__).parent.parent
-sys.path.append(str(root_dir))
+# Add the project root to Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if project_root not in sys.path:
+    sys.path.append(project_root)
 
-from tabs.option_pricing_tab import render_option_pricing_tab
+from app.tabs.trading_strategies_tab import render_trading_strategies_tab
+from app.tabs.portfolio_tab import render_portfolio_tab
+from app.tabs.option_pricing_tab import render_option_pricing_tab
+from app.tabs.yield_curve_tab import render_yield_curve_tab
+import streamlit as st
+
 from tabs.model_comparison_tab import render_model_comparison_tab
-from tabs.portfolio_tab import render_portfolio_tab
 
 
 def main():
     st.set_page_config(page_title="QuantumFin-Lab", layout="wide")
     st.sidebar.title("QuantumFin-Lab Navigation")
-    selected_tab = st.sidebar.radio("Select a tab:", ["Trading Strategies", "Portfolio Optimization and Risk", "Option Pricing", "Model Comparison"])
+    selected_tab = st.sidebar.radio("Select a tab:", ["Yield Curve Analysis", "Trading Strategies", "Portfolio Optimization and Risk", "Option Pricing", "Model Comparison"])
 
     if selected_tab == "Trading Strategies":
         render_trading_strategies_tab()
@@ -25,6 +28,8 @@ def main():
         render_option_pricing_tab()
     elif selected_tab == "Model Comparison":
         render_model_comparison_tab()
+    elif selected_tab == "Yield Curve Analysis":
+        render_yield_curve_tab()
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,41 @@
+RESUMEN DEL DATASET: treasury_yields
+===================================
+
+Rango de fechas: 1981-09-01 00:00:00 a 2024-12-01 00:00:00
+
+Dimensiones: 520 filas x 6 columnas
+
+Columnas disponibles:
+- 3month
+- 2year
+- 5year
+- 7year
+- 10year
+- 30year
+
+Estadísticas descriptivas:
+           3month       2year       5year       7year      10year      30year
+count  520.000000  520.000000  520.000000  520.000000  520.000000  520.000000
+mean     3.823250    4.444962    4.954577    5.216500    5.402577    5.826096
+std      3.171563    3.404814    3.279268    3.202006    3.101804    2.854338
+min      0.010000    0.120000    0.270000    0.460000    0.620000    1.270000
+25%      0.900000    1.362500    2.180000    2.647500    2.890000    3.647500
+50%      3.930000    4.280000    4.495000    4.610000    4.720000    5.180000
+75%      5.682500    6.342500    6.782500    7.060000    7.250000    7.555000
+max     15.610000   16.460000   15.930000   15.650000   15.320000   14.680000
+
+Valores faltantes por columna:
+3month    0
+2year     0
+5year     0
+7year     0
+10year    0
+30year    0
+
+Tipos de datos:
+3month    float64
+2year     float64
+5year     float64
+7year     float64
+10year    float64
+30year    float64

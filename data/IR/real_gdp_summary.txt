@@ -1,0 +1,26 @@
+RESUMEN DEL DATASET: real_gdp
+============================
+
+Rango de fechas: 1929-01-01 00:00:00 a 2023-01-01 00:00:00
+
+Dimensiones: 95 filas x 1 columnas
+
+Columnas disponibles:
+- value
+
+Estadísticas descriptivas:
+              value
+count     95.000000
+mean    8368.027411
+std     6425.999733
+min      877.431000
+25%     2821.255500
+50%     6387.437000
+75%    13819.903500
+max    22671.096000
+
+Valores faltantes por columna:
+value    0
+
+Tipos de datos:
+value    float64

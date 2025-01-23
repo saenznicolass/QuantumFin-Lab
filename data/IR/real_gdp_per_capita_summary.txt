@@ -1,0 +1,26 @@
+RESUMEN DEL DATASET: real_gdp_per_capita
+=======================================
+
+Rango de fechas: 1947-01-01 00:00:00 a 2024-07-01 00:00:00
+
+Dimensiones: 311 filas x 1 columnas
+
+Columnas disponibles:
+- value
+
+Estadísticas descriptivas:
+              value
+count    311.000000
+mean   37825.144695
+std    15742.263898
+min    15032.000000
+25%    24256.000000
+50%    36210.000000
+75%    53151.000000
+max    69399.000000
+
+Valores faltantes por columna:
+value    0
+
+Tipos de datos:
+value    float64
