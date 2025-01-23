@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 def load_yield_curve_data():
     """Load and validate yield curve data"""
     try:
-        DATA_PATH = os.path.join("QuantumFin-Lab", "data", "IR", "treasury_yields.csv")
+        DATA_PATH = os.path.join("data", "IR", "treasury_yields.csv")
         data_yc = pd.read_csv(DATA_PATH, index_col=0, parse_dates=True)
         return data_yc if not data_yc.empty else None
     except Exception as e:
