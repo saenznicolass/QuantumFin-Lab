@@ -10,11 +10,11 @@ def create_duration_estimate(price_up, price_down, current_price, yield_change):
 
 def render_pv01_bond_tab():
     """Render the Bond PV01 Calculation tab."""
-    st.header("🔢 Bond PV01 & Risk Analysis")
+    st.header("Bond PV01 & Risk Analysis")
       
         
     # Main layout with tabs
-    tab1, tab2, tab3 = st.tabs(["📊 Calculator", "📈 Risk Analysis", "📚 Documentation"])
+    tab1, tab2, tab3 = st.tabs(["Calculator", "Risk Analysis", "Documentation"])
     
     with tab1:
                 # Sidebar para configuración avanzada
@@ -258,7 +258,7 @@ def render_pv01_bond_tab():
         
     with tab3:
         st.markdown("""
-        ### 📚 Bond PV01 Documentation
+        ### Bond PV01 Documentation
         
         #### Overview
         The Bond PV01 calculator provides tools for analyzing interest rate risk of fixed-rate bonds.

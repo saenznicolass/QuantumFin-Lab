@@ -2,6 +2,8 @@ from app.tabs.yield_curve_subtabs.treasury_analysis import render_treasury_analy
 from app.tabs.yield_curve_subtabs.vasicek_model_tab import render_vasicek_model_tab
 from app.tabs.yield_curve_subtabs.cap_floor_pricing_tab import render_cap_floor_pricing_tab
 from app.tabs.yield_curve_subtabs.pv01_bond_tab import render_pv01_bond_tab
+from app.tabs.yield_curve_subtabs.monte_carlo_var_cvar_tab import render_monte_carlo_var_cvar_tab
+
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -14,11 +16,12 @@ def render_yield_curve_tab():
     st.header("U.S. Treasury Yield Curve & Interest Rate Models")
     
     # Create tabs for different analyses
-    treasury_tab, vasicek_tab, cap_floor_tab, pv01_tab = st.tabs([
+    treasury_tab, vasicek_tab, cap_floor_tab, pv01_tab, Monte_Carlo_tab = st.tabs([
         "Treasury Analysis",
         "Vasicek Model",
         "Caps/Floors Pricing",
-        "Bond PV01"
+        "Bond PV01",
+        "Monte Carlo"
     ])
     
     with treasury_tab:
@@ -32,3 +35,6 @@ def render_yield_curve_tab():
         
     with pv01_tab:
         render_pv01_bond_tab()
+        
+    with Monte_Carlo_tab:
+        render_monte_carlo_var_cvar_tab()
