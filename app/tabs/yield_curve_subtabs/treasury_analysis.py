@@ -10,7 +10,12 @@ def load_yield_curve_data():
     try:
         DATA_PATH = os.path.join("data", "IR", "treasury_yields.csv")
         data_yc = pd.read_csv(DATA_PATH, index_col=0, parse_dates=True)
-        return data_yc if not data_yc.empty else None
+        if not data_yc.empty:
+            # print("Columns in yield_curve_data:", data_yc.columns.tolist())
+            # Store in session state for other tabs to use
+            st.session_state.yield_curve_data = data_yc
+            return data_yc
+        return None
     except Exception as e:
         st.error(f"Error loading data: {str(e)}")
         return None
@@ -133,10 +138,22 @@ def render_treasury_analysis():
         "Documentation"
     ])
     
-    data_yc = load_yield_curve_data()
-    if data_yc is None:
-        return
+    # Load data and store in session state if not already loaded
+    if 'yield_curve_data' not in st.session_state:
+        data_yc = load_yield_curve_data()
+        if data_yc is None:
+            st.error("Failed to load yield curve data. Please check the data file.")
+            return
+    else:
+        data_yc = st.session_state.yield_curve_data
         
+    # Add a refresh button
+    if st.button("Refresh Yield Curve Data"):
+        data_yc = load_yield_curve_data()
+        if data_yc is None:
+            st.error("Failed to refresh yield curve data.")
+            return
+            
     with tab1:
         st.plotly_chart(plot_yield_evolution(data_yc), use_container_width=True)
         
@@ -167,7 +184,7 @@ def render_treasury_analysis():
         st.markdown("""
         ### About the Yield Curve Analysis
         
-        This tool provides comprehensive analysis of U.S. Treasury Yield Curves:
+        This tool provides simple analysis of U.S. Treasury Yield Curves:
         
         - **Yield Evolution**: Track how yields change over time for different maturities
         - **Curve Comparison**: Compare yield curves across different dates

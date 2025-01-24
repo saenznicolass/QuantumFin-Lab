@@ -338,7 +338,7 @@ def render_vasicek_model_tab():
     st.markdown("---")
     
     # Run simulation button with better styling
-    if st.button("🚀 Run Simulation", use_container_width=True):
+    if st.button("Run Simulation", use_container_width=True):
         with st.spinner(" Simulating interest rate paths..."):
             # Initial rate set to long-term mean
             r0_initial = b_vasicek
