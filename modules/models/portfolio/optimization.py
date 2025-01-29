@@ -3,8 +3,8 @@
 import numpy as np
 import pandas as pd
 import streamlit as st
-
-from pypfopt import EfficientFrontier, risk_models, expected_returns
+from pypfopt.efficient_frontier import EfficientFrontier
+from pypfopt import risk_models, expected_returns
 import plotly.graph_objects as go
 
 def run_portfolio_optimization(data: pd.DataFrame, 

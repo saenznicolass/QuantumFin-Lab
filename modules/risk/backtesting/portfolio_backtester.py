@@ -16,7 +16,7 @@ def run_backtest(
     
     :param data: DataFrame of asset prices
     :param weights: Dictionary of weights {asset: weight}
-    :param rebalance_frequency: Rebalancing frequency ('M', 'Q', '6M', 'Y')
+    :param rebalance_frequency: Rebalancing frequency ('ME', 'QE', '6M', 'Y')
     :param transaction_costs: Transaction costs as decimal
     :param benchmark: Optional benchmark ticker (e.g. '^GSPC' for S&P 500)
     :return: DataFrame with backtest results
