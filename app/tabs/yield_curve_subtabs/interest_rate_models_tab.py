@@ -6,6 +6,7 @@ import numpy as np
 from modules.models.interest_rate.hull_white import HullWhite, HWCalibrator
 from modules.models.interest_rate.cir import CIR, CIRCalibrator
 from modules.models.interest_rate.g2pp import G2PP, G2PPCalibrator
+from modules.models.interest_rate.hull_white_2f import HullWhite2F, HW2FCalibrator
 from typing import Tuple, List, Dict
 import warnings
 
@@ -14,7 +15,7 @@ def render_model_description():
     st.markdown("## Interest Rate Models Comparison")
     
     with st.expander("Model Descriptions", expanded=False):
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         
         with col1:
             st.markdown("### Hull-White Model")
@@ -53,12 +54,28 @@ def render_model_description():
             - Correlation between factors
             - Better fit to term structure
             """)
+        
+        with col4:
+            st.markdown("### Hull-White 2F Model")
+            st.markdown("""
+            Two-factor Gaussian model:
+            ```
+            dr(t) = [x(t) + y(t)]dt
+            dx(t) = -a₁x(t)dt + σ₁dW₁(t)
+            dy(t) = -a₂y(t)dt + σ₂dW₂(t)
+            corr(dW₁, dW₂) = ρ
+            ```
+            - Two mean-reverting factors
+            - Richer dynamics than 1F
+            - Correlation between factors
+            - Better fit to complex curves
+            """)
 
 def get_model_parameters():
     """Collects model parameters from user input."""
     st.markdown("### Model Configuration")
     
-    model_tabs = st.tabs(["Hull-White", "CIR", "G2++"])
+    model_tabs = st.tabs(["Hull-White", "Hull-White 2F", "CIR", "G2++"])
     
     with model_tabs[0]:
         col1, col2 = st.columns(2)
@@ -71,13 +88,24 @@ def get_model_parameters():
     with model_tabs[1]:
         col1, col2 = st.columns(2)
         with col1:
+            hw2f_a1 = st.slider("Mean Reversion 1 (a₁)", 0.01, 1.0, 0.1, 0.01)
+            hw2f_sigma1 = st.slider("Volatility 1 (σ₁)", 0.001, 0.1, 0.01, 0.001)
+            hw2f_a2 = st.slider("Mean Reversion 2 (a₂)", 0.01, 1.0, 0.2, 0.01)
+        with col2:
+            hw2f_sigma2 = st.slider("Volatility 2 (σ₂)", 0.001, 0.1, 0.01, 0.001)
+            hw2f_rho = st.slider("Correlation (ρ)", -0.99, 0.99, -0.5, 0.01)
+            hw2f_r0 = st.slider("Initial Rate (r₀)", 0.01, 0.10, 0.03, 0.01)
+    
+    with model_tabs[2]:
+        col1, col2 = st.columns(2)
+        with col1:
             cir_a = st.slider("Mean Reversion (a) - CIR", 0.01, 1.0, 0.3, 0.01)  # Default from txt: 0.3
             cir_sigma = st.slider("Volatility (σ) - CIR", 0.01, 0.5, 0.1, 0.01)  # Default from txt: 0.1
         with col2:
             cir_theta = st.slider("Long-term Mean (θ) - CIR", 0.01, 0.10, 0.05, 0.01)  # Default from txt: 0.05
             cir_r0 = st.slider("Initial Rate (r₀) - CIR", 0.01, 0.10, 0.03, 0.01)
     
-    with model_tabs[2]:
+    with model_tabs[3]:
         col1, col2 = st.columns(2)
         with col1:
             g2_a = st.slider("Mean Reversion 1 (a) - G2++", 0.01, 1.0, 0.1, 0.01)  # Default from txt: 0.1
@@ -98,6 +126,7 @@ def get_model_parameters():
     
     return {
         'hw': (hw_a, hw_sigma, hw_r0),
+        'hw2f': (hw2f_a1, hw2f_sigma1, hw2f_a2, hw2f_sigma2, hw2f_rho, hw2f_r0),
         'cir': (cir_a, cir_sigma, cir_theta, cir_r0),
         'g2': (g2_a, g2_sigma, g2_b, g2_eta, g2_rho, g2_r0),
         'sim': (num_paths, time_horizon, num_steps)
@@ -195,18 +224,23 @@ def plot_simulation_comparison(hw_paths, cir_paths, g2_paths, time_horizon):
     
     st.plotly_chart(fig, use_container_width=True)
 
-def plot_separate_simulations(hw_paths, cir_paths, g2_paths, time_horizon, confidence_level=0.95):
-    """Creates three separate plots for each model with confidence bands."""
+def plot_separate_simulations(hw_paths, hw2f_paths, cir_paths, g2_paths, time_horizon, confidence_level=0.95):
+    """Creates four separate plots for each model with confidence bands."""
     times = np.linspace(0, time_horizon, hw_paths.shape[1])
     
     # Create tabs for different visualizations
-    plot_tabs = st.tabs(["Hull-White", "CIR", "G2++"])
+    plot_tabs = st.tabs(["Hull-White", "Hull-White 2F", "CIR", "G2++"])
     
     # Color schemes for each model - Updated colors and opacities
     hw_colors = {
         'main': 'rgb(31, 119, 180)', 
         'band': 'rgba(31, 119, 180, 0.15)',  # Lighter band
         'paths': 'rgba(0, 0, 0, 0.2)'  # Black paths with 0.2 opacity
+    }
+    hw2f_colors = {
+        'main': 'rgb(148, 103, 189)',
+        'band': 'rgba(148, 103, 189, 0.15)',
+        'paths': 'rgba(0, 0, 0, 0.2)'
     }
     cir_colors = {
         'main': 'rgb(255, 127, 14)', 
@@ -276,6 +310,27 @@ def plot_separate_simulations(hw_paths, cir_paths, g2_paths, time_horizon, confi
         st.plotly_chart(fig_hw, use_container_width=True)
     
     with plot_tabs[1]:
+        fig_hw2f = go.Figure()
+        for i in range(min(25, hw2f_paths.shape[0])):  # Also increased to 25 paths
+            fig_hw2f.add_trace(go.Scatter(
+                x=times, y=hw2f_paths[i],
+                mode='lines',
+                line=dict(width=1, color=hw2f_colors['paths']),
+                name=f'Path {i+1}',
+                showlegend=False
+            ))
+        fig_hw2f = add_confidence_bands(fig_hw2f, hw2f_paths, hw2f_colors)
+        fig_hw2f.update_layout(
+            title='Hull-White 2F Model Simulations',
+            xaxis_title='Time (years)',
+            yaxis_title='Interest Rate',
+            yaxis_tickformat='.2%',
+            template='plotly_white',
+            hovermode='x unified'
+        )
+        st.plotly_chart(fig_hw2f, use_container_width=True)
+    
+    with plot_tabs[2]:
         fig_cir = go.Figure()
         for i in range(min(25, cir_paths.shape[0])):  # Also increased to 25 paths
             fig_cir.add_trace(go.Scatter(
@@ -296,7 +351,7 @@ def plot_separate_simulations(hw_paths, cir_paths, g2_paths, time_horizon, confi
         )
         st.plotly_chart(fig_cir, use_container_width=True)
     
-    with plot_tabs[2]:
+    with plot_tabs[3]:
         fig_g2 = go.Figure()
         for i in range(min(25, g2_paths.shape[0])):  # Also increased to 25 paths
             fig_g2.add_trace(go.Scatter(
@@ -328,7 +383,13 @@ def calibrate_with_progress(instruments: List[Dict], market_prices: List[float])
         progress_bar.progress(10)
         hw_calibrator = HWCalibrator(instruments, market_prices)
         hw_model, hw_rmse = hw_calibrator.calibrate()
-        progress_bar.progress(40)
+        progress_bar.progress(30)
+        
+        # Hull-White 2F calibration
+        status_text.text("Calibrating Hull-White 2F model...")
+        hw2f_calibrator = HW2FCalibrator(instruments, market_prices)
+        hw2f_model, hw2f_rmse = hw2f_calibrator.calibrate()
+        progress_bar.progress(50)
         
         # CIR calibration
         status_text.text("Calibrating CIR model...")
@@ -343,7 +404,7 @@ def calibrate_with_progress(instruments: List[Dict], market_prices: List[float])
         progress_bar.progress(100)
         status_text.text("Calibration complete!")
         
-        return hw_model, hw_rmse, cir_model, cir_rmse, g2_model, g2_rmse
+        return hw_model, hw_rmse, hw2f_model, hw2f_rmse, cir_model, cir_rmse, g2_model, g2_rmse
     except Exception as e:
         status_text.error(f"Calibration error: {str(e)}")
         return None
@@ -421,6 +482,7 @@ def render_interest_rate_models_tab():
                     st.info("Using real US Treasury market data for calibration")
                     # Update initial rates for models with real FFR
                     params['hw'] = (params['hw'][0], params['hw'][1], r0)
+                    params['hw2f'] = (params['hw2f'][0], params['hw2f'][1], params['hw2f'][2], params['hw2f'][3], params['hw2f'][4], r0)
                     params['cir'] = (params['cir'][0], params['cir'][1], params['cir'][2], r0)
                     params['g2'] = (params['g2'][0], params['g2'][1], params['g2'][2], 
                                   params['g2'][3], params['g2'][4], r0)
@@ -441,14 +503,15 @@ def render_interest_rate_models_tab():
                 calibration_results = calibrate_with_progress(instruments, market_prices)
                 
                 if calibration_results is not None:
-                    hw_model, hw_rmse, cir_model, cir_rmse, g2_model, g2_rmse = calibration_results
+                    hw_model, hw_rmse, hw2f_model, hw2f_rmse, cir_model, cir_rmse, g2_model, g2_rmse = calibration_results
                     
                     # Display calibration results
                     cal_results = pd.DataFrame({
-                        'Model': ['Hull-White', 'CIR', 'G2++'],
-                        'RMSE': [hw_rmse, cir_rmse, g2_rmse],
+                        'Model': ['Hull-White', 'Hull-White 2F', 'CIR', 'G2++'],
+                        'RMSE': [hw_rmse, hw2f_rmse, cir_rmse, g2_rmse],
                         'Parameters': [
                             f"a={hw_model.a:.4f}, σ={hw_model.sigma:.4f}",
+                            f"a₁={hw2f_model.a1:.4f}, σ₁={hw2f_model.sigma1:.4f}, a₂={hw2f_model.a2:.4f}, σ₂={hw2f_model.sigma2:.4f}, ρ={hw2f_model.rho:.4f}",
                             f"a={cir_model.a:.4f}, σ={cir_model.sigma:.4f}, θ={cir_model.theta:.4f}",
                             f"a={g2_model.a:.4f}, σ={g2_model.sigma:.4f}, b={g2_model.b:.4f}, η={g2_model.eta:.4f}, ρ={g2_model.rho:.4f}"
                         ]
@@ -464,11 +527,15 @@ def render_interest_rate_models_tab():
                     
                     sim_status.text("Simulating Hull-White paths...")
                     hw_paths = hw_model.monte_carlo(num_paths, num_steps, time_horizon)
-                    sim_progress.progress(33)
+                    sim_progress.progress(20)
+                    
+                    sim_status.text("Simulating Hull-White 2F paths...")
+                    hw2f_paths = hw2f_model.monte_carlo(num_paths, num_steps, time_horizon)
+                    sim_progress.progress(40)
                     
                     sim_status.text("Simulating CIR paths...")
                     cir_paths = cir_model.monte_carlo(num_paths, num_steps, time_horizon)
-                    sim_progress.progress(66)
+                    sim_progress.progress(60)
                     
                     sim_status.text("Simulating G2++ paths...")
                     g2_paths = g2_model.monte_carlo(num_paths, num_steps, time_horizon)
@@ -482,7 +549,7 @@ def render_interest_rate_models_tab():
                     
                     # Display plots and statistics
                     st.markdown("### Model Simulations")
-                    plot_separate_simulations(hw_paths, cir_paths, g2_paths, time_horizon, confidence_level=0.95)
+                    plot_separate_simulations(hw_paths, hw2f_paths, cir_paths, g2_paths, time_horizon, confidence_level=0.95)
                     
                     # Additional statistics
                     st.markdown("### Model Statistics")
@@ -493,6 +560,12 @@ def render_interest_rate_models_tab():
                             f"{hw_paths.std():.2%}",
                             f"{hw_paths.min():.2%}",
                             f"{hw_paths.max():.2%}"
+                        ],
+                        'Hull-White 2F': [
+                            f"{hw2f_paths.mean():.2%}",
+                            f"{hw2f_paths.std():.2%}",
+                            f"{hw2f_paths.min():.2%}",
+                            f"{hw2f_paths.max():.2%}"
                         ],
                         'CIR': [
                             f"{cir_paths.mean():.2%}",
