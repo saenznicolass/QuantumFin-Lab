@@ -118,7 +118,7 @@ def get_model_parameters():
     
     sim_params = st.columns(3)
     with sim_params[0]:
-        num_paths = st.number_input("Number of Paths", 100, 10000, 1000, 100)
+        num_paths = st.number_input("Number of Paths", 100, 10000, 100, 100)
     with sim_params[1]:
         time_horizon = st.number_input("Time Horizon (Years)", 1, 10, 5, 1)
     with sim_params[2]:

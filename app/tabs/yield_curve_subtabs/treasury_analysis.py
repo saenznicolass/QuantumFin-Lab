@@ -111,8 +111,12 @@ def plot_3d_yield_curves(data_yc):
         z=Z,
         colorscale='Viridis',
         colorbar=dict(
-            title='Yield (%)',
-            titleside='right'
+            title=dict(
+                text='Yield (%)',
+                side='right'
+            ),
+            x=1.02,
+            xanchor='left'
         )
     ))
 
